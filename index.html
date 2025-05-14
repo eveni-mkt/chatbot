@@ -1146,15 +1146,14 @@
       // 입력 필드 키 이벤트
       inputField.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-          // 모바일에서는 Shift+Enter 키만 줄바꿈, Enter는 전송
-          if (isMobile && !e.shiftKey) {
-            e.preventDefault();
-            if (!isLoading && inputField.value.trim() !== '') {
-              sendMessage();
-            }
+          // 모바일에서는 Enter 키로 줄바꿈
+          if (isMobile) {
+            // 줄바꿈 기본 동작 유지 (preventDefault 호출 안함)
+            return;
           }
-          // 데스크탑에서도 Shift+Enter는 줄바꿈, Enter는 전송
-          else if (!isMobile && !e.shiftKey) {
+          
+          // 데스크탑에서는 Shift+Enter로 줄바꿈, Enter로 전송
+          if (!e.shiftKey) {
             e.preventDefault();
             if (!isLoading && inputField.value.trim() !== '') {
               sendMessage();
@@ -1189,6 +1188,11 @@
         // 스크롤 중 터치 이벤트 전파 방지
         e.stopPropagation();
       }, { passive: true });
+      
+      // 모바일에서 help-text 업데이트
+      if (isMobile) {
+        document.querySelector('.help-text').textContent = '전송하려면 버튼을 누르세요';
+      }
     }
     
     // 초기화
