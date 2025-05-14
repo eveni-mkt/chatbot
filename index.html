@@ -875,10 +875,44 @@
         let tableContent = '';
         let currentTable = '';
         let result = '';
+        let skipIntroText = false;
+        let skipOutroText = false;
+        let firstLineIndex = -1;
+        let lastTableEndIndex = -1;
+        
+        // 표 시작과 끝 위치 먼저 파악
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line.includes('|') && !line.match(/^[-|:]+$/)) {
+            if (firstLineIndex === -1) {
+              firstLineIndex = i;
+            }
+            lastTableEndIndex = i;
+          }
+        }
+        
+        // 표 전후의 설명 텍스트 제거 여부 결정
+        if (firstLineIndex > 0) {
+          skipIntroText = true;
+        }
+        
+        if (lastTableEndIndex < lines.length - 1) {
+          skipOutroText = true;
+        }
         
         // 각 줄 처리
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i].trim();
+          
+          // 표 시작 전 텍스트 스킵
+          if (skipIntroText && i < firstLineIndex) {
+            continue;
+          }
+          
+          // 표 종료 후 텍스트 스킵
+          if (skipOutroText && i > lastTableEndIndex && lastTableEndIndex !== -1) {
+            continue;
+          }
           
           // 비어있는 줄이나 구분선만 있는 줄 건너뛰기
           if (line === '' || line === '```' || line.match(/^[-+]{3,}$/) || line.match(/^[-.]{3,}$/)) {
@@ -889,8 +923,8 @@
               currentTable = '';
             }
             
+            // 빈 줄이 아니면 일반 텍스트로 추가
             if (line !== '' && line !== '```') {
-              // 일반 텍스트로 추가
               result += line + '<br>';
             }
             continue;
@@ -915,7 +949,7 @@
             }
             
             // 헤더 여부 결정 (이전 행이 구분선이거나 첫 번째 행인 경우)
-            const isHeader = i === 0 || 
+            const isHeader = i === firstLineIndex || 
               (i > 0 && (
                 (i > 0 && lines[i-1] && lines[i-1].trim().match(/^[-|:]+$/)) || 
                 lines[i-1].trim() === '' || 
