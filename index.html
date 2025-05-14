@@ -233,7 +233,7 @@
       clip-path: polygon(100% 0, 100% 100%, 0 100%);
     }
     
-    /* 표 스타일 - 스크린샷에 맞게 디자인 및 가로 스크롤 지원 */
+    /* 표 스타일 - 스크린샷에 맞게 디자인 및 가로/세로 스크롤 지원 */
     .table-container {
       width: 100%;
       overflow-x: auto;
@@ -241,10 +241,12 @@
       -webkit-overflow-scrolling: touch; /* iOS 스크롤 부드럽게 */
       position: relative;
       border-radius: 4px;
+      max-height: none; /* 세로 제한 제거 */
     }
     
     .table-container::-webkit-scrollbar {
       height: 4px;
+      width: 4px;
     }
     
     .table-container::-webkit-scrollbar-thumb {
@@ -257,6 +259,12 @@
       border-radius: 4px;
     }
     
+    /* 세로 스크롤이 필요한 긴 표를 위한 컨테이너 */
+    .table-container.long-table {
+      max-height: 400px; /* 최대 높이 설정 */
+      overflow-y: auto; /* 세로 스크롤 활성화 */
+    }
+    
     .bubble table {
       width: auto;
       min-width: 100%;
@@ -264,6 +272,7 @@
       font-size: 0.9rem;
       background-color: white;
       border: 1px solid #e5e7eb;
+      table-layout: fixed; /* 셀 너비 균일하게 */
     }
     
     .bubble.user .table-container {
@@ -282,6 +291,9 @@
       padding: 0.7rem 0.8rem;
       border: 1px solid #e5e7eb;
       white-space: nowrap;
+      position: sticky; /* 헤더 고정 */
+      top: 0; /* 테이블 상단에 고정 */
+      z-index: 1; /* 다른 셀 위에 표시 */
     }
     
     .bubble.user th {
@@ -293,10 +305,6 @@
       padding: 0.7rem 0.8rem;
       border: 1px solid #e5e7eb;
       background-color: white;
-    }
-    
-    /* 마지막 칼럼 외에는 모두 nowrap 적용 */
-    .bubble td {
       white-space: nowrap;
     }
     
@@ -879,6 +887,7 @@
         let skipOutroText = false;
         let firstLineIndex = -1;
         let lastTableEndIndex = -1;
+        let rowCount = 0;
         
         // 표 시작과 끝 위치 먼저 파악
         for (let i = 0; i < lines.length; i++) {
@@ -888,6 +897,11 @@
               firstLineIndex = i;
             }
             lastTableEndIndex = i;
+            
+            // 표 행인 경우 카운트 (구분선 제외)
+            if (!line.match(/^[-|:]+$/)) {
+              rowCount++;
+            }
           }
         }
         
@@ -899,6 +913,9 @@
         if (lastTableEndIndex < lines.length - 1) {
           skipOutroText = true;
         }
+        
+        // 테이블 클래스 결정 (15행 이상인 경우 세로 스크롤 적용)
+        const tableClass = rowCount > 15 ? 'table-container long-table' : 'table-container';
         
         // 각 줄 처리
         for (let i = 0; i < lines.length; i++) {
@@ -919,7 +936,7 @@
             // 표가 진행 중이었다면 종료
             if (tableStarted) {
               tableStarted = false;
-              result += '<div class="table-container">' + currentTable + '</table></div>';
+              result += `<div class="${tableClass}">` + currentTable + '</table></div>';
               currentTable = '';
             }
             
@@ -970,7 +987,7 @@
             // 표가 진행 중이었다면 종료
             if (tableStarted) {
               tableStarted = false;
-              result += '<div class="table-container">' + currentTable + '</table></div>';
+              result += `<div class="${tableClass}">` + currentTable + '</table></div>';
               currentTable = '';
             }
             
@@ -981,7 +998,7 @@
         
         // 마지막 표 처리
         if (tableStarted) {
-          result += '<div class="table-container">' + currentTable + '</table></div>';
+          result += `<div class="${tableClass}">` + currentTable + '</table></div>';
         }
         
         return result;
