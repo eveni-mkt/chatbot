@@ -233,20 +233,44 @@
       clip-path: polygon(100% 0, 100% 100%, 0 100%);
     }
     
-    /* 표 스타일 - 스크린샷에 맞게 디자인 */
-    .bubble table {
+    /* 표 스타일 - 스크린샷에 맞게 디자인 및 가로 스크롤 지원 */
+    .table-container {
       width: 100%;
-      border-collapse: collapse;
+      overflow-x: auto;
       margin: 0.8rem 0;
+      -webkit-overflow-scrolling: touch; /* iOS 스크롤 부드럽게 */
+      position: relative;
+      border-radius: 4px;
+    }
+    
+    .table-container::-webkit-scrollbar {
+      height: 4px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb {
+      background-color: rgba(156, 163, 175, 0.5);
+      border-radius: 4px;
+    }
+    
+    .table-container::-webkit-scrollbar-track {
+      background-color: rgba(243, 244, 246, 0.5);
+      border-radius: 4px;
+    }
+    
+    .bubble table {
+      width: auto;
+      min-width: 100%;
+      border-collapse: collapse;
       font-size: 0.9rem;
-      border-radius: 0;
-      overflow: hidden;
-      box-shadow: none;
+      background-color: white;
       border: 1px solid #e5e7eb;
     }
     
-    .bubble.user table {
+    .bubble.user .table-container {
       background-color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .bubble.user table {
       color: #4a1d31;
     }
     
@@ -256,8 +280,8 @@
       font-weight: 600;
       text-align: left;
       padding: 0.7rem 0.8rem;
-      border-bottom: 1px solid #e5e7eb;
-      border-right: 1px solid #e5e7eb;
+      border: 1px solid #e5e7eb;
+      white-space: nowrap;
     }
     
     .bubble.user th {
@@ -267,17 +291,31 @@
     
     .bubble td {
       padding: 0.7rem 0.8rem;
-      border-bottom: 1px solid #e5e7eb;
-      border-right: 1px solid #e5e7eb;
+      border: 1px solid #e5e7eb;
       background-color: white;
     }
     
-    .bubble td:last-child, .bubble th:last-child {
-      border-right: none;
+    /* 마지막 칼럼 외에는 모두 nowrap 적용 */
+    .bubble td {
+      white-space: nowrap;
     }
     
-    .bubble tr:last-child td {
-      border-bottom: none;
+    /* 스크롤 있음을 표시하는 그라데이션 효과 */
+    .table-container::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+      width: 20px;
+      background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(249, 250, 251, 0.7));
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .table-container.has-scroll::after {
+      opacity: 1;
     }
     
     .message-text {
@@ -847,7 +885,7 @@
             // 표가 진행 중이었다면 종료
             if (tableStarted) {
               tableStarted = false;
-              result += currentTable + '</table>';
+              result += '<div class="table-container">' + currentTable + '</table></div>';
               currentTable = '';
             }
             
@@ -898,7 +936,7 @@
             // 표가 진행 중이었다면 종료
             if (tableStarted) {
               tableStarted = false;
-              result += currentTable + '</table>';
+              result += '<div class="table-container">' + currentTable + '</table></div>';
               currentTable = '';
             }
             
@@ -909,7 +947,7 @@
         
         // 마지막 표 처리
         if (tableStarted) {
-          result += currentTable + '</table>';
+          result += '<div class="table-container">' + currentTable + '</table></div>';
         }
         
         return result;
@@ -1133,11 +1171,114 @@
       
       // 초기 및 리사이즈시 뷰포트 높이 설정
       setVH();
-      window.addEventListener('resize', setVH);
+      window.addEventListener('resize', () => {
+        setVH();
+        // 테이블 스크롤 상태 체크
+        checkTableScroll();
+      });
+      
+      // 초기 테이블 스크롤 체크
+      setTimeout(checkTableScroll, 100);
     }
     
     // 페이지 로드 시 초기화
     document.addEventListener('DOMContentLoaded', initialize);
+    
+    // 테이블 스크롤 체크 및 클래스 추가
+    function checkTableScroll() {
+      const tableContainers = document.querySelectorAll('.table-container');
+      tableContainers.forEach(container => {
+        if (container.scrollWidth > container.clientWidth) {
+          container.classList.add('has-scroll');
+        } else {
+          container.classList.remove('has-scroll');
+        }
+        
+        // 스크롤 이벤트 리스너 추가
+        container.addEventListener('scroll', function() {
+          if (this.scrollLeft + this.clientWidth >= this.scrollWidth - 10) {
+            this.classList.remove('has-scroll');
+          } else {
+            this.classList.add('has-scroll');
+          }
+        });
+      });
+    }
+    
+    // 메시지 렌더링 함수에 테이블 스크롤 체크 추가
+    function renderMessages() {
+      // 메시지 목록 초기화
+      initializeMessages();
+      
+      // 로딩 인디케이터 제거
+      const loadingElement = document.querySelector('.loading');
+      if (loadingElement) {
+        loadingElement.remove();
+      }
+      
+      // 각 메시지 렌더링
+      messages.forEach(message => {
+        addMessageToDOM(message);
+      });
+      
+      // 스크롤을 최하단으로 이동
+      scrollToBottom();
+      
+      // 테이블 스크롤 체크
+      setTimeout(checkTableScroll, 100);
+    }
+    
+    // DOM에 메시지 추가 후 테이블 스크롤 체크
+    function addMessageToDOM(message) {
+      // 이미 렌더링된 메시지는 건너뜀
+      if (document.getElementById(`message-${message.id}`)) {
+        return;
+      }
+      
+      // 빈 상태 숨기기
+      emptyState.style.display = 'none';
+      
+      // 메시지 요소 생성
+      const messageElement = document.createElement('div');
+      messageElement.id = `message-${message.id}`;
+      messageElement.className = `message ${message.sender}`;
+      
+      // 메시지 내용 구성
+      let messageHTML = '';
+      
+      // AI 아바타 (AI 메시지인 경우에만 표시)
+      if (message.sender === 'ai') {
+        messageHTML += `
+          <div class="avatar ai">
+            <span>AI</span>
+          </div>
+        `;
+      }
+      
+      // 메시지 버블
+      messageHTML += `
+        <div class="bubble ${message.sender}">
+          <div class="message-text">${formatMessageText(message.text)}</div>
+          <div class="timestamp ${message.sender}">${message.timestamp}</div>
+        </div>
+      `;
+      
+      // 사용자 아바타 (사용자 메시지인 경우에만 표시)
+      if (message.sender === 'user') {
+        messageHTML += `
+          <div class="avatar user">
+            <span>나</span>
+          </div>
+        `;
+      }
+      
+      // HTML 설정 및 메시지 컨테이너에 추가
+      messageElement.innerHTML = messageHTML;
+      messagesContainer.appendChild(messageElement);
+      
+      // 테이블 스크롤 체크
+      setTimeout(checkTableScroll, 100);
+    }
   </script>
 </body>
 </html>
